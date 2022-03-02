@@ -1,3 +1,22 @@
+############################# NUMA
+# # Set core binding
+# cps=`lscpu | grep "Core(s) per socket" | awk '{print $NF}'`
+# spn=`lscpu | grep "Socket(s)" | awk '{print $NF}'`
+# tpc=`lscpu | grep "Thread(s) per core" | awk '{print $NF}'`
+# nnn=`lscpu | grep "NUMA node(s)" | awk '{print $NF}'`
+# if [[ $tpc -eq 1 ]]; then
+#   hpt="--no_hyperthreads"
+# fi
+
+# Mention the number of gpus
+gpus_per_node=8 # this number is hard-coded in this script and the DLM run.sh (outer layer)
+
+# python version
+ver=$(python -V 2>&1 | sed 's/.* \([0-9]\).\([0-9]\).*/\1\.\2/')
+
+
+
+#############################
 # Train the model
 
 WORKSPACE="${WORKSPACE:?"Export WORKSPACE env var to specify a directory for outputs."}"
@@ -66,7 +85,12 @@ train() {
     SaveDir="${OUT_DIR?}/checkpoints/${ARCH}-${RUN_NAME}"
     mkdir -p $SaveDir
 
-    python $FS_TRAIN \
+    ################## Insert "bind_launch" here!!!! ##################
+    python$ver -m mlperf_utils.bind_launch \
+        --nproc_per_node $gpus_per_node \
+        --auto_binding \
+    ####################################################################
+        $FS_TRAIN \
         "${DATABIN?}" \
         --seed 43821 \
         --user-dir "${USER_DIR?}" \
@@ -104,4 +128,3 @@ train() {
 }
 
 train
-
